@@ -2,36 +2,75 @@
 <html lang="pt-br">
 <head>
 <meta charset="UTF-8">
-<title>Futebol 2D Lateral</title>
+<title>Futebol 2D</title>
 
 <link href="https://fonts.googleapis.com/css2?family=Rubik+Wet+Paint&display=swap" rel="stylesheet">
 
 <style>
-body{margin:0;background:#0a5c2b;font-family:'Rubik Wet Paint',cursive;overflow:hidden}
-canvas{display:block;margin:auto;background:#1e7a1e}
-
+body{
+ margin:0;
+ background:#0a5c2b;
+ font-family:'Rubik Wet Paint', cursive;
+ overflow:hidden;
+}
+canvas{
+ display:block;
+ margin:auto;
+ background:#1e7a1e;
+}
 .menu{
- position:fixed;inset:0;background:#111;color:#fff;
- display:flex;flex-direction:column;align-items:center;justify-content:center;
- z-index:10
+ position:fixed;
+ inset:0;
+ background:#111;
+ color:#fff;
+ display:flex;
+ flex-direction:column;
+ align-items:center;
+ justify-content:center;
+ z-index:10;
 }
-.menu h1{font-size:64px}
-.menu button{font-size:28px;padding:12px 60px;margin:10px;border:none;border-radius:12px}
-
-.colors{display:grid;grid-template-columns:repeat(4,120px);gap:10px}
-
+.menu h1{font-size:64px;margin-bottom:20px}
+.menu button{
+ font-size:28px;
+ padding:12px 60px;
+ margin:10px;
+ border:none;
+ border-radius:12px;
+ cursor:pointer;
+}
+.colors{
+ display:grid;
+ grid-template-columns:repeat(4,120px);
+ gap:10px;
+}
 #ui{
- position:absolute;top:10px;left:50%;transform:translateX(-50%);
- background:rgba(0,0,0,.6);color:#fff;
- padding:8px 20px;border-radius:10px;font-size:24px
+ position:absolute;
+ top:10px;
+ left:50%;
+ transform:translateX(-50%);
+ background:rgba(0,0,0,.6);
+ color:#fff;
+ padding:8px 20px;
+ border-radius:10px;
+ font-size:24px;
 }
-
 .power{
- position:absolute;bottom:20px;width:12px;height:80px;
- background:#333;border-radius:6px
+ position:absolute;
+ bottom:20px;
+ width:12px;
+ height:80px;
+ background:#333;
+ border-radius:6px;
 }
-.fill{width:100%;height:0%;background:#fff;position:absolute;bottom:0}
-#p1p{left:20px} #p2p{right:20px}
+.fill{
+ width:100%;
+ height:0%;
+ background:#fff;
+ position:absolute;
+ bottom:0;
+}
+#p1p{left:20px}
+#p2p{right:20px}
 </style>
 </head>
 
@@ -67,6 +106,8 @@ canvas{display:block;margin:auto;background:#1e7a1e}
 const canvas=document.getElementById("game");
 const ctx=canvas.getContext("2d");
 
+const FIELD = { x:50, y:20, w:800, h:460 };
+
 const COLORS=[
  {n:"Amarelo",c:"#ff0"},{n:"Vermelho",c:"#f00"},
  {n:"Azul",c:"#05f"},{n:"Verde",c:"#0a4"},
@@ -74,7 +115,8 @@ const COLORS=[
  {n:"Roxo",c:"#8a2be2"},{n:"Laranja",c:"#f80"}
 ];
 
-let cor1,cor2,playing=false,paused=false;
+let cor1="#05f",cor2="#f00";
+let playing=false,paused=false;
 let score1=0,score2=0,time=60,half=1;
 let force1=0,force2=0;
 let keys={};
@@ -87,12 +129,14 @@ let ball={x:450,y:250,r:8,vx:0,vy:0};
 
 COLORS.forEach(o=>{
  let b1=document.createElement("button");
- b1.style.background=o.c; b1.innerText=o.n;
+ b1.style.background=o.c;
+ b1.innerText=o.n;
  b1.onclick=()=>cor1=o.c;
  c1.appendChild(b1);
 
  let b2=document.createElement("button");
- b2.style.background=o.c; b2.innerText=o.n;
+ b2.style.background=o.c;
+ b2.innerText=o.n;
  b2.onclick=()=>{cor2=o.c;start()};
  c2.appendChild(b2);
 });
@@ -106,6 +150,7 @@ function start(){
  colors.style.display="none";
  playing=true;
  setInterval(clock,1000);
+ resetPositions();
  loop();
 }
 
@@ -134,9 +179,9 @@ function resetMatch(){
 
 function clock(){
  if(!paused && playing){
-  if(time>0)time--;
+  if(time>0) time--;
   else if(half===1){
-   half=2;time=60;resetPositions();
+   half=2; time=60; resetPositions();
   }
   document.getElementById("time").innerText=time;
  }
@@ -151,14 +196,18 @@ addEventListener("keydown",e=>{
 });
 addEventListener("keyup",e=>keys[e.key]=false);
 
-function collide(a,b,push){
- let dx=b.x-a.x,dy=b.y-a.y;
- let d=Math.hypot(dx,dy),m=a.r+b.r;
- if(d<m){
-  let nx=dx/d,ny=dy/d,o=m-d;
-  a.x-=nx*o*push;a.y-=ny*o*push;
-  b.x+=nx*o*(1-push);b.y+=ny*o*(1-push);
-  return {nx,ny};
+function clampPlayer(p){
+ p.x = Math.max(FIELD.x + p.r, Math.min(FIELD.x + FIELD.w - p.r, p.x));
+ p.y = Math.max(FIELD.y + p.r, Math.min(FIELD.y + FIELD.h - p.r, p.y));
+}
+
+function collideBall(p){
+ let dx=ball.x-p.x,dy=ball.y-p.y;
+ let d=Math.hypot(dx,dy);
+ if(d < ball.r + p.r){
+  let nx=dx/d,ny=dy/d;
+  ball.vx+=nx*2;
+  ball.vy+=ny*2;
  }
 }
 
@@ -178,8 +227,10 @@ function loop(){
   if(keys["ArrowLeft"])p2.x-=s;
   if(keys["ArrowRight"])p2.x+=s;
 
-  collide(p1,p2,0.5);
+  clampPlayer(p1);
+  clampPlayer(p2);
 
+  // chute P1
   if(keys["q"] && Math.hypot(ball.x-p1.x,ball.y-p1.y)<26){
    force1=Math.min(force1+0.02,1);
    p1f.style.height=(force1*100)+"%";
@@ -191,6 +242,7 @@ function loop(){
    force1=0;p1f.style.height="0%";
   }
 
+  // chute P2
   if(keys[" "] && Math.hypot(ball.x-p2.x,ball.y-p2.y)<26){
    force2=Math.min(force2+0.02,1);
    p2f.style.height=(force2*100)+"%";
@@ -202,20 +254,24 @@ function loop(){
    force2=0;p2f.style.height="0%";
   }
 
-  ball.x+=ball.vx;ball.y+=ball.vy;
-  ball.vx*=0.98;ball.vy*=0.98;
+  ball.x+=ball.vx;
+  ball.y+=ball.vy;
+  ball.vx*=0.98;
+  ball.vy*=0.98;
 
-  let c=collide(ball,p1,0.2); if(c){ball.vx+=c.nx*2;ball.vy+=c.ny*2}
-  c=collide(ball,p2,0.2); if(c){ball.vx+=c.nx*2;ball.vy+=c.ny*2}
+  collideBall(p1);
+  collideBall(p2);
 
-  if(ball.y<40||ball.y>460)ball.vy*=-1;
-
-  // GOL LATERAL
-  if(ball.x<50 && ball.y>200 && ball.y<300){
-   score2++;goalSound.play();resetPositions();
+  if(ball.y < FIELD.y + ball.r || ball.y > FIELD.y + FIELD.h - ball.r){
+   ball.vy*=-1;
   }
-  if(ball.x>850 && ball.y>200 && ball.y<300){
-   score1++;goalSound.play();resetPositions();
+
+  // gols laterais
+  if(ball.x < FIELD.x && ball.y>200 && ball.y<300){
+   score2++; goalSound.play(); resetPositions();
+  }
+  if(ball.x > FIELD.x + FIELD.w && ball.y>200 && ball.y<300){
+   score1++; goalSound.play(); resetPositions();
   }
 
   document.getElementById("ui").innerText=`${score1} x ${score2} | ⏱️ ${time}`;
@@ -224,23 +280,27 @@ function loop(){
  ctx.clearRect(0,0,900,500);
 
  ctx.strokeStyle="#fff";
- ctx.strokeRect(50,20,800,460);
+ ctx.strokeRect(FIELD.x,FIELD.y,FIELD.w,FIELD.h);
 
- // traves
  ctx.strokeRect(30,200,20,100);
  ctx.strokeRect(850,200,20,100);
 
- draw(p1,cor1); draw(p2,cor2);
+ draw(p1,cor1);
+ draw(p2,cor2);
 
  ctx.fillStyle="#fff";
- ctx.beginPath();ctx.arc(ball.x,ball.y,ball.r,0,Math.PI*2);ctx.fill();
+ ctx.beginPath();
+ ctx.arc(ball.x,ball.y,ball.r,0,Math.PI*2);
+ ctx.fill();
 
  requestAnimationFrame(loop);
 }
 
 function draw(p,c){
  ctx.fillStyle=c;
- ctx.beginPath();ctx.arc(p.x,p.y,p.r,0,Math.PI*2);ctx.fill();
+ ctx.beginPath();
+ ctx.arc(p.x,p.y,p.r,0,Math.PI*2);
+ ctx.fill();
 }
 </script>
 
