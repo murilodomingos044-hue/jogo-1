@@ -2,25 +2,84 @@
 <html lang="pt-br">
 <head>
 <meta charset="UTF-8">
-<title>Futebol 3D Ultimate</title>
-<link href="https://fonts.googleapis.com/css2?family=Bangers&display=swap" rel="stylesheet">
+<title>Futebol 3D Completo</title>
+
+<link href="https://fonts.googleapis.com/css2?family=Rubik+Wet+Paint&display=swap" rel="stylesheet">
+
 <style>
-body{margin:0;overflow:hidden;background:#111;font-family:'Bangers',cursive}
+body{
+ margin:0;
+ overflow:hidden;
+ background:#111;
+ font-family:'Rubik Wet Paint',cursive;
+}
+
+/* MENUS */
 .menu{
- position:fixed;inset:0;background:#111;color:#fff;
- display:flex;flex-direction:column;align-items:center;justify-content:center;
- z-index:100
+ position:fixed;
+ inset:0;
+ background:#111;
+ color:#fff;
+ display:flex;
+ flex-direction:column;
+ align-items:center;
+ justify-content:center;
+ z-index:100;
 }
-.menu h1{font-size:64px;margin-bottom:20px}
-.menu button{font-size:28px;padding:12px 50px;margin:10px;border:none;border-radius:12px}
-.colors{display:grid;grid-template-columns:repeat(4,120px);gap:15px}
+.menu h1{font-size:64px;margin:10px}
+.menu button{
+ font-size:28px;
+ padding:12px 60px;
+ margin:10px;
+ border:none;
+ border-radius:15px;
+ cursor:pointer;
+}
+
+/* CORES */
+.colors{
+ display:grid;
+ grid-template-columns:repeat(4,140px);
+ gap:15px;
+ margin-top:20px;
+}
+.colors button{color:#000}
+
+/* UI */
 #ui{
- position:absolute;top:10px;left:50%;transform:translateX(-50%);
- background:rgba(0,0,0,.6);padding:10px 25px;border-radius:12px;
- color:white;font-size:26px;z-index:10
+ position:absolute;
+ top:10px;
+ left:50%;
+ transform:translateX(-50%);
+ background:rgba(0,0,0,.6);
+ padding:10px 25px;
+ border-radius:15px;
+ color:white;
+ font-size:28px;
+ z-index:10;
 }
+
+/* BARRAS DE FORÇA */
+.power{
+ position:absolute;
+ bottom:20px;
+ width:12px;
+ height:80px;
+ background:#333;
+ border-radius:8px;
+}
+.fill{
+ width:100%;
+ height:0%;
+ background:#fff;
+ position:absolute;
+ bottom:0;
+}
+#p1p{left:20px}
+#p2p{right:20px}
 </style>
 </head>
+
 <body>
 
 <div id="menu" class="menu">
@@ -30,43 +89,58 @@ body{margin:0;overflow:hidden;background:#111;font-family:'Bangers',cursive}
 </div>
 
 <div id="colors" class="menu" style="display:none">
- <h1>COR PLAYER 1</h1>
+ <h1>PLAYER 1</h1>
  <div class="colors" id="c1"></div>
- <h1>COR PLAYER 2</h1>
+ <h1>PLAYER 2</h1>
  <div class="colors" id="c2"></div>
+</div>
+
+<div id="pause" class="menu" style="display:none">
+ <h1>PAUSE</h1>
+ <button onclick="resume()">CONTINUAR</button>
+ <button onclick="resetMatch()">REINICIAR</button>
+ <button onclick="location.reload()">SAIR</button>
 </div>
 
 <div id="ui">0 x 0 | ⏱️ <span id="time">60</span></div>
 
+<div id="p1p" class="power"><div id="p1f" class="fill"></div></div>
+<div id="p2p" class="power"><div id="p2f" class="fill"></div></div>
+
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+
 <script>
-const cores=[
- {n:"Amarelo",c:0xffff00},
- {n:"Vermelho",c:0xff0000},
- {n:"Azul",c:0x0066ff},
- {n:"Verde",c:0x00aa44},
- {n:"Preto",c:0x000000},
- {n:"Branco",c:0xffffff},
- {n:"Roxo",c:0x8a2be2},
- {n:"Laranja",c:0xff8800},
+/* ================= CONFIG ================= */
+const COLORS=[
+ {n:"Amarelo",c:0xffff00},{n:"Vermelho",c:0xff0000},
+ {n:"Azul",c:0x0055ff},{n:"Verde",c:0x00aa44},
+ {n:"Preto",c:0x000000},{n:"Branco",c:0xffffff},
+ {n:"Roxo",c:0x8a2be2},{n:"Laranja",c:0xff8800}
 ];
 
-let cor1,cor2,scene,camera,renderer;
-let p1,p2,gk1,gk2,ball,ballVel=new THREE.Vector3();
-let score1=0,score2=0,time=60,half=1;
-let keys={};
+let scene,camera,renderer;
+let p1,p2,gk1,gk2,ball;
+let ballVel=new THREE.Vector3();
+let keys={},paused=false;
+let score1=0,score2=0;
+let time=60,half=1;
+let force1=0,force2=0;
+let cor1,cor2;
 
-cores.forEach(o=>{
+const goalSound=new Audio("https://assets.mixkit.co/sfx/preview/mixkit-crowd-cheer-2014.mp3");
+
+/* ================= MENUS ================= */
+COLORS.forEach(o=>{
  let b1=document.createElement("button");
- b1.style.background=`#${o.c.toString(16)}`;
+ b1.style.background=`#${o.c.toString(16).padStart(6,"0")}`;
  b1.innerText=o.n;
- b1.onclick=()=>{cor1=o.c;};
+ b1.onclick=()=>cor1=o.c;
  c1.appendChild(b1);
 
  let b2=document.createElement("button");
- b2.style.background=`#${o.c.toString(16)}`;
+ b2.style.background=`#${o.c.toString(16).padStart(6,"0")}`;
  b2.innerText=o.n;
- b2.onclick=()=>{cor2=o.c;start();};
+ b2.onclick=()=>{cor2=o.c;startGame()};
  c2.appendChild(b2);
 });
 
@@ -75,25 +149,85 @@ function openColors(){
  colors.style.display="flex";
 }
 
-function jogador(c){
+function resume(){
+ paused=false;
+ pause.style.display="none";
+}
+
+/* ================= CRIAÇÕES ================= */
+function criarJogador(cor){
  let g=new THREE.Group();
- let m=new THREE.MeshPhongMaterial({color:c});
- let body=new THREE.Mesh(new THREE.BoxGeometry(3,6,2),m);body.position.y=6;
- let head=new THREE.Mesh(new THREE.SphereGeometry(1.5,16,16),m);head.position.y=10;
+ let m=new THREE.MeshStandardMaterial({color:cor});
+
+ let body=new THREE.Mesh(new THREE.BoxGeometry(3,6,2),m);
+ body.position.y=6;
+ let head=new THREE.Mesh(new THREE.SphereGeometry(1.5,16,16),m);
+ head.position.y=10;
+
  let arm=new THREE.Mesh(new THREE.BoxGeometry(1,4,1),m);
  let arm2=arm.clone();
- arm.position.set(-2.5,6,0);arm2.position.set(2.5,6,0);
+ arm.position.set(-2.5,6,0);
+ arm2.position.set(2.5,6,0);
+
  let leg=new THREE.Mesh(new THREE.BoxGeometry(1,5,1),m);
  let leg2=leg.clone();
- leg.position.set(-1,2.5,0);leg2.position.set(1,2.5,0);
+ leg.position.set(-1,2.5,0);
+ leg2.position.set(1,2.5,0);
+
  g.add(body,head,arm,arm2,leg,leg2);
  return g;
 }
 
-function start(){
+function criarGol(z){
+ let g=new THREE.Group();
+ let m=new THREE.MeshStandardMaterial({color:0xffffff});
+
+ let p1=new THREE.Mesh(new THREE.BoxGeometry(1,8,1),m);
+ let p2=p1.clone();
+ let top=new THREE.Mesh(new THREE.BoxGeometry(20,1,1),m);
+ p1.position.set(-10,4,z);
+ p2.position.set(10,4,z);
+ top.position.set(0,8,z);
+
+ let rede=new THREE.Mesh(
+  new THREE.PlaneGeometry(20,8),
+  new THREE.MeshStandardMaterial({color:0xffffff,transparent:true,opacity:0.2,side:THREE.DoubleSide})
+ );
+ rede.position.set(0,4,z+(z>0?-1:1));
+
+ g.add(p1,p2,top,rede);
+ return g;
+}
+
+function arquibancada(z,cor){
+ let g=new THREE.Group();
+ let base=new THREE.Mesh(
+  new THREE.BoxGeometry(120,12,10),
+  new THREE.MeshStandardMaterial({color:0x444444})
+ );
+ base.position.set(0,6,z);
+ g.add(base);
+
+ for(let x=-55;x<=55;x+=4){
+  for(let y=2;y<=10;y+=4){
+   let fan=new THREE.Mesh(
+    new THREE.BoxGeometry(2,4,2),
+    new THREE.MeshStandardMaterial({color:cor})
+   );
+   fan.position.set(x,y+6,z+4*(z>0?1:-1));
+   g.add(fan);
+  }
+ }
+ return g;
+}
+
+/* ================= INICIAR ================= */
+function startGame(){
  colors.style.display="none";
 
  scene=new THREE.Scene();
+ scene.background=new THREE.Color(0x87ceeb);
+
  camera=new THREE.PerspectiveCamera(60,innerWidth/innerHeight,0.1,1000);
  camera.position.set(0,70,95);
 
@@ -105,82 +239,148 @@ function start(){
 
  let field=new THREE.Mesh(
   new THREE.PlaneGeometry(120,70),
-  new THREE.MeshPhongMaterial({color:0x1e7a1e})
+  new THREE.MeshStandardMaterial({color:0x1e7a1e})
  );
  field.rotation.x=-Math.PI/2;
  scene.add(field);
 
- p1=jogador(cor1);
- p2=jogador(cor2);
+ scene.add(criarGol(-35));
+ scene.add(criarGol(35));
+
+ scene.add(arquibancada(45,cor1));
+ scene.add(arquibancada(-45,cor2));
+
+ p1=criarJogador(cor1);
+ p2=criarJogador(cor2);
  scene.add(p1,p2);
 
- gk1=jogador(0xffff00);gk1.scale.set(.7,.7,.7);
- gk2=jogador(0xffff00);gk2.scale.set(.7,.7,.7);
+ gk1=criarJogador(0xffff00); gk1.scale.set(.7,.7,.7);
+ gk2=criarJogador(0xffff00); gk2.scale.set(.7,.7,.7);
  scene.add(gk1,gk2);
 
  ball=new THREE.Mesh(
   new THREE.SphereGeometry(1.5,32,32),
-  new THREE.MeshPhongMaterial({color:0xffffff})
+  new THREE.MeshStandardMaterial({color:0xffffff})
  );
- ball.position.set(0,1.5,0);
+ ball.position.y=1.5;
  scene.add(ball);
 
- reset();
- setInterval(timer,1000);
+ resetPositions();
+ setInterval(clock,1000);
  animate();
 }
 
-function reset(){
+/* ================= LÓGICA ================= */
+function resetPositions(){
  ball.position.set(0,1.5,0);
  ballVel.set(0,0,0);
+
  if(half===1){
-  p1.position.set(0,0,5);
-  p2.position.set(0,0,-15);
+  p1.position.set(0,0,6);
+  p2.position.set(0,0,-18);
  }else{
-  p1.position.set(0,0,-15);
-  p2.position.set(0,0,5);
+  p1.position.set(0,0,-18);
+  p2.position.set(0,0,6);
  }
+
  gk1.position.set(0,0,32);
  gk2.position.set(0,0,-32);
 }
 
-function timer(){
- if(time>0){time--;timeSpan.innerText=time;}
- else if(half===1){half=2;time=60;reset();}
+function resetMatch(){
+ score1=0;score2=0;
+ time=60;half=1;
+ resetPositions();
+ resume();
 }
 
-addEventListener("keydown",e=>keys[e.key]=true);
+function clock(){
+ if(!paused){
+  if(time>0)time--;
+  else if(half===1){
+   half=2;
+   time=60;
+   resetPositions();
+  }
+  document.getElementById("time").innerText=time;
+ }
+}
+
+/* ================= CONTROLES ================= */
+addEventListener("keydown",e=>{
+ keys[e.key]=true;
+ if(e.key==="Escape"){
+  paused=!paused;
+  pause.style.display=paused?"flex":"none";
+ }
+});
 addEventListener("keyup",e=>keys[e.key]=false);
 
+/* ================= UPDATE ================= */
 function update(){
- if(keys["w"])p1.position.z-=0.6;
- if(keys["s"])p1.position.z+=0.6;
- if(keys["a"])p1.position.x-=0.6;
- if(keys["d"])p1.position.x+=0.6;
+ if(paused)return;
 
- if(keys["ArrowUp"])p2.position.z-=0.6;
- if(keys["ArrowDown"])p2.position.z+=0.6;
- if(keys["ArrowLeft"])p2.position.x-=0.6;
- if(keys["ArrowRight"])p2.position.x+=0.6;
+ let speed=0.6;
+
+ if(keys["w"])p1.position.z-=speed;
+ if(keys["s"])p1.position.z+=speed;
+ if(keys["a"])p1.position.x-=speed;
+ if(keys["d"])p1.position.x+=speed;
+
+ if(keys["ArrowUp"])p2.position.z-=speed;
+ if(keys["ArrowDown"])p2.position.z+=speed;
+ if(keys["ArrowLeft"])p2.position.x-=speed;
+ if(keys["ArrowRight"])p2.position.x+=speed;
+
+ if(keys["q"] && p1.position.distanceTo(ball.position)<4){
+  force1=Math.min(force1+0.04,1);
+  p1f.style.height=(force1*100)+"%";
+ }
+ if(!keys["q"] && force1>0){
+  let d=new THREE.Vector3().subVectors(ball.position,p1.position).normalize();
+  ballVel.add(d.multiplyScalar(force1*6));
+  ballVel.y=2;
+  force1=0; p1f.style.height="0%";
+ }
+
+ if(keys[" "] && p2.position.distanceTo(ball.position)<4){
+  force2=Math.min(force2+0.04,1);
+  p2f.style.height=(force2*100)+"%";
+ }
+ if(!keys[" "] && force2>0){
+  let d=new THREE.Vector3().subVectors(ball.position,p2.position).normalize();
+  ballVel.add(d.multiplyScalar(force2*6));
+  ballVel.y=2;
+  force2=0; p2f.style.height="0%";
+ }
 
  ballVel.y-=0.15;
  ball.position.add(ballVel);
  ballVel.multiplyScalar(0.98);
 
- if(ball.position.y<1.5){ball.position.y=1.5;ballVel.y*=-0.6}
+ if(ball.position.y<1.5){
+  ball.position.y=1.5;
+  ballVel.y*=-0.6;
+ }
+
  if(Math.abs(ball.position.x)>58)ballVel.x*=-1;
- if(Math.abs(ball.position.z)>33)ballVel.z*=-1;
+ if(Math.abs(ball.position.z)>34)ballVel.z*=-1;
 
- gk1.position.x=THREE.MathUtils.lerp(gk1.position.x,ball.position.x,.05);
- gk2.position.x=THREE.MathUtils.lerp(gk2.position.x,ball.position.x,.05);
+ gk1.position.x=THREE.MathUtils.lerp(gk1.position.x,ball.position.x,.04);
+ gk2.position.x=THREE.MathUtils.lerp(gk2.position.x,ball.position.x,.04);
 
- if(ball.position.z<-34){score1++;reset();}
- if(ball.position.z>34){score2++;reset();}
+ if(ball.position.z<-34 && Math.abs(ball.position.x)<10){
+  score1++;goalSound.play();resetPositions();
+ }
+ if(ball.position.z>34 && Math.abs(ball.position.x)<10){
+  score2++;goalSound.play();resetPositions();
+ }
 
  ui.innerText=`${score1} x ${score2} | ⏱️ ${time}`;
  camera.lookAt(ball.position);
 }
 
+/* ================= LOOP ================= */
 function animate(){
  requestAnimationFrame(animate);
  update();
