@@ -7,43 +7,107 @@
 <link href="https://fonts.googleapis.com/css2?family=Rubik+Wet+Paint&display=swap" rel="stylesheet">
 
 <style>
-body{margin:0;background:#0a5c2b;font-family:'Rubik Wet Paint',cursive;overflow:hidden}
-canvas{display:block;margin:auto;background:#1e7a1e}
+body{
+ margin:0;
+ background:#0a5c2b;
+ font-family:'Rubik Wet Paint',cursive;
+ overflow:hidden;
+}
+canvas{
+ display:block;
+ margin:auto;
+ background:#1e7a1e;
+}
+
+/* OVERLAY DE GOL */
+#goalScreen{
+ position:fixed;
+ inset:0;
+ display:none;
+ align-items:center;
+ justify-content:center;
+ background:rgba(0,0,0,0.5);
+ z-index:20;
+}
+#goalScreen img{
+ width:400px;
+ max-width:90%;
+}
+
+/* fallback se não quiser imagem */
+#goalText{
+ position:absolute;
+ font-size:96px;
+ color:#fff;
+ text-shadow:6px 6px #000;
+}
+
+/* MENUS */
 .menu{
- position:fixed;inset:0;background:#111;color:#fff;
- display:flex;flex-direction:column;align-items:center;justify-content:center;
- z-index:10
+ position:fixed;
+ inset:0;
+ background:#111;
+ color:#fff;
+ display:flex;
+ flex-direction:column;
+ align-items:center;
+ justify-content:center;
+ z-index:10;
 }
 .menu h1{font-size:64px;margin-bottom:20px}
-.menu button{font-size:28px;padding:12px 60px;margin:10px;border:none;border-radius:12px;cursor:pointer}
-.colors{display:grid;grid-template-columns:repeat(4,120px);gap:10px}
-#ui{
- position:absolute;top:10px;left:50%;transform:translateX(-50%);
- background:rgba(0,0,0,.6);color:#fff;padding:8px 20px;border-radius:10px;font-size:24px
+.menu button{
+ font-size:28px;
+ padding:12px 60px;
+ margin:10px;
+ border:none;
+ border-radius:12px;
+ cursor:pointer;
 }
-.power{position:absolute;bottom:20px;width:12px;height:80px;background:#333;border-radius:6px}
-.fill{width:100%;height:0%;background:#fff;position:absolute;bottom:0}
-#p1p{left:20px} #p2p{right:20px}
+
+#ui{
+ position:absolute;
+ top:10px;
+ left:50%;
+ transform:translateX(-50%);
+ background:rgba(0,0,0,.6);
+ color:#fff;
+ padding:8px 20px;
+ border-radius:10px;
+ font-size:24px;
+}
+
+.power{
+ position:absolute;
+ bottom:20px;
+ width:12px;
+ height:80px;
+ background:#333;
+ border-radius:6px;
+}
+.fill{
+ width:100%;
+ height:0%;
+ background:#fff;
+ position:absolute;
+ bottom:0;
+}
+#p1p{left:20px}
+#p2p{right:20px}
 </style>
 </head>
 
 <body>
 
+<!-- TELA DE GOL -->
+<div id="goalScreen">
+ <!-- se quiser trocar por imagem, coloque src aqui -->
+ <!-- <img src="gol.png"> -->
+ <div id="goalText">GOLLL!!!!!!!!</div>
+</div>
+
 <div id="menu" class="menu">
  <h1>⚽ FUTEBOL 2D</h1>
- <button onclick="openColors()">JOGAR</button>
- <button onclick="location.reload()">SAIR</button>
-</div>
-
-<div id="colors" class="menu" style="display:none">
- <h1>PLAYER 1</h1><div id="c1" class="colors"></div>
- <h1>PLAYER 2</h1><div id="c2" class="colors"></div>
-</div>
-
-<div id="pause" class="menu" style="display:none">
- <h1>PAUSE</h1>
- <button onclick="resume()">CONTINUAR</button>
- <button onclick="resetMatch()">REINICIAR</button>
+ <button onclick="start()">JOGAR</button>
  <button onclick="location.reload()">SAIR</button>
 </div>
 
@@ -59,59 +123,30 @@ const ctx=canvas.getContext("2d");
 
 const FIELD={x:50,y:20,w:800,h:460};
 
-const COLORS=[
- {n:"Amarelo",c:"#ff0"},{n:"Vermelho",c:"#f00"},
- {n:"Azul",c:"#05f"},{n:"Verde",c:"#0a4"},
- {n:"Preto",c:"#000"},{n:"Branco",c:"#fff"},
- {n:"Roxo",c:"#8a2be2"},{n:"Laranja",c:"#f80"}
-];
-
-let cor1="#05f",cor2="#f00";
-let playing=false,paused=false;
-let score1=0,score2=0,time=60,half=1;
-let force1=0,force2=0;
-let keys={};
+let playing=false;
+let score1=0,score2=0,time=60;
+let keys={},force1=0,force2=0;
 
 const goalSound=new Audio("https://assets.mixkit.co/sfx/preview/mixkit-crowd-cheer-2014.mp3");
 
-let p1={x:250,y:250,r:16};
-let p2={x:650,y:250,r:16};
+let p1={x:420,y:250,r:16};
+let p2={x:480,y:250,r:16};
 let ball={x:450,y:250,r:8,vx:0,vy:0};
 
-COLORS.forEach(o=>{
- let b1=document.createElement("button");
- b1.style.background=o.c;b1.innerText=o.n;b1.onclick=()=>cor1=o.c;c1.appendChild(b1);
- let b2=document.createElement("button");
- b2.style.background=o.c;b2.innerText=o.n;b2.onclick=()=>{cor2=o.c;start()};c2.appendChild(b2);
-});
-
-function openColors(){menu.style.display="none";colors.style.display="flex"}
-function start(){colors.style.display="none";playing=true;setInterval(clock,1000);resetPositions();loop()}
-function resume(){paused=false;pause.style.display="none"}
-
-function resetPositions(){
- ball.x=450;ball.y=250;ball.vx=ball.vy=0;
- if(half===1){p1.x=420;p1.y=250;p2.x=480;p2.y=250}
- else{p1.x=480;p1.y=250;p2.x=420;p2.y=250}
-}
-
-function resetMatch(){score1=score2=0;time=60;half=1;resetPositions();resume()}
-
-function clock(){
- if(!paused&&playing){
-  if(time>0)time--;
-  else if(half===1){half=2;time=60;resetPositions()}
+function start(){
+ menu.style.display="none";
+ playing=true;
+ setInterval(()=>{
+  if(time>0) time--;
   document.getElementById("time").innerText=time;
- }
+ },1000);
+ loop();
 }
 
-addEventListener("keydown",e=>{
- keys[e.key]=true;
- if(e.key==="Escape"){paused=!paused;pause.style.display=paused?"flex":"none"}
-});
+addEventListener("keydown",e=>keys[e.key]=true);
 addEventListener("keyup",e=>keys[e.key]=false);
 
-function clampPlayer(p){
+function clamp(p){
  p.x=Math.max(FIELD.x+p.r,Math.min(FIELD.x+FIELD.w-p.r,p.x));
  p.y=Math.max(FIELD.y+p.r,Math.min(FIELD.y+FIELD.h-p.r,p.y));
 }
@@ -121,72 +156,90 @@ function collideBall(p){
  let d=Math.hypot(dx,dy);
  if(d<ball.r+p.r){
   let nx=dx/d,ny=dy/d;
-  ball.vx+=nx*2;ball.vy+=ny*2;
+  ball.vx+=nx*2; ball.vy+=ny*2;
  }
+}
+
+function showGoal(){
+ goalSound.play();
+ goalScreen.style.display="flex";
+ setTimeout(()=>goalScreen.style.display="none",1500);
+}
+
+function reset(){
+ ball.x=450;ball.y=250;ball.vx=ball.vy=0;
+ p1.x=420;p2.x=480;
 }
 
 function loop(){
  if(!playing){requestAnimationFrame(loop);return}
 
- if(!paused){
-  const SPEED=2.3; // 🔥 +15% de velocidade
+ const SPEED=2.3;
 
-  if(keys["w"])p1.y-=SPEED;
-  if(keys["s"])p1.y+=SPEED;
-  if(keys["a"])p1.x-=SPEED;
-  if(keys["d"])p1.x+=SPEED;
+ if(keys["w"])p1.y-=SPEED;
+ if(keys["s"])p1.y+=SPEED;
+ if(keys["a"])p1.x-=SPEED;
+ if(keys["d"])p1.x+=SPEED;
 
-  if(keys["ArrowUp"])p2.y-=SPEED;
-  if(keys["ArrowDown"])p2.y+=SPEED;
-  if(keys["ArrowLeft"])p2.x-=SPEED;
-  if(keys["ArrowRight"])p2.x+=SPEED;
+ if(keys["ArrowUp"])p2.y-=SPEED;
+ if(keys["ArrowDown"])p2.y+=SPEED;
+ if(keys["ArrowLeft"])p2.x-=SPEED;
+ if(keys["ArrowRight"])p2.x+=SPEED;
 
-  clampPlayer(p1); clampPlayer(p2);
+ clamp(p1); clamp(p2);
 
-  if(keys["q"]&&Math.hypot(ball.x-p1.x,ball.y-p1.y)<26){
-   force1=Math.min(force1+0.02,1);p1f.style.height=(force1*100)+"%"
-  }
-  if(!keys["q"]&&force1){
-   let dx=ball.x-p1.x,dy=ball.y-p1.y,m=Math.hypot(dx,dy);
-   ball.vx+=dx/m*force1*6;ball.vy+=dy/m*force1*6;
-   force1=0;p1f.style.height="0%"
-  }
-
-  if(keys[" "]&&Math.hypot(ball.x-p2.x,ball.y-p2.y)<26){
-   force2=Math.min(force2+0.02,1);p2f.style.height=(force2*100)+"%"
-  }
-  if(!keys[" "]&&force2){
-   let dx=ball.x-p2.x,dy=ball.y-p2.y,m=Math.hypot(dx,dy);
-   ball.vx+=dx/m*force2*6;ball.vy+=dy/m*force2*6;
-   force2=0;p2f.style.height="0%"
-  }
-
-  ball.x+=ball.vx;ball.y+=ball.vy;
-  ball.vx*=0.98;ball.vy*=0.98;
-
-  collideBall(p1); collideBall(p2);
-
-  if(ball.y<FIELD.y+ball.r||ball.y>FIELD.y+FIELD.h-ball.r)ball.vy*=-1;
-
-  if(ball.x<FIELD.x&&ball.y>200&&ball.y<300){score2++;goalSound.play();resetPositions()}
-  if(ball.x>FIELD.x+FIELD.w&&ball.y>200&&ball.y<300){score1++;goalSound.play();resetPositions()}
-
-  document.getElementById("ui").innerText=`${score1} x ${score2} | ⏱️ ${time}`;
+ if(keys["q"]&&Math.hypot(ball.x-p1.x,ball.y-p1.y)<26){
+  force1=Math.min(force1+0.02,1);
+  p1f.style.height=(force1*100)+"%";
+ }
+ if(!keys["q"]&&force1){
+  let dx=ball.x-p1.x,dy=ball.y-p1.y,m=Math.hypot(dx,dy);
+  ball.vx+=dx/m*force1*6; ball.vy+=dy/m*force1*6;
+  force1=0;p1f.style.height="0%";
  }
 
+ if(keys[" "]&&Math.hypot(ball.x-p2.x,ball.y-p2.y)<26){
+  force2=Math.min(force2+0.02,1);
+  p2f.style.height=(force2*100)+"%";
+ }
+ if(!keys[" "]&&force2){
+  let dx=ball.x-p2.x,dy=ball.y-p2.y,m=Math.hypot(dx,dy);
+  ball.vx+=dx/m*force2*6; ball.vy+=dy/m*force2*6;
+  force2=0;p2f.style.height="0%";
+ }
+
+ ball.x+=ball.vx; ball.y+=ball.vy;
+ ball.vx*=0.98; ball.vy*=0.98;
+
+ collideBall(p1); collideBall(p2);
+
+ if(ball.y<FIELD.y+ball.r||ball.y>FIELD.y+FIELD.h-ball.r) ball.vy*=-1;
+
+ // GOLS LATERAIS
+ if(ball.x<FIELD.x && ball.y>200 && ball.y<300){
+  score2++; showGoal(); reset();
+ }
+ if(ball.x>FIELD.x+FIELD.w && ball.y>200 && ball.y<300){
+  score1++; showGoal(); reset();
+ }
+
+ document.getElementById("ui").innerText=`${score1} x ${score2} | ⏱️ ${time}`;
+
  ctx.clearRect(0,0,900,500);
- ctx.strokeStyle="#fff";ctx.strokeRect(FIELD.x,FIELD.y,FIELD.w,FIELD.h);
- ctx.strokeRect(30,200,20,100);ctx.strokeRect(850,200,20,100);
+ ctx.strokeStyle="#fff";
+ ctx.strokeRect(FIELD.x,FIELD.y,FIELD.w,FIELD.h);
+ ctx.strokeRect(30,200,20,100);
+ ctx.strokeRect(850,200,20,100);
 
- draw(p1,cor1); draw(p2,cor2);
+ ctx.fillStyle="#00f";
+ ctx.beginPath();ctx.arc(p1.x,p1.y,p1.r,0,Math.PI*2);ctx.fill();
+ ctx.fillStyle="#f00";
+ ctx.beginPath();ctx.arc(p2.x,p2.y,p2.r,0,Math.PI*2);ctx.fill();
 
- ctx.fillStyle="#fff";ctx.beginPath();ctx.arc(ball.x,ball.y,ball.r,0,Math.PI*2);ctx.fill();
+ ctx.fillStyle="#fff";
+ ctx.beginPath();ctx.arc(ball.x,ball.y,ball.r,0,Math.PI*2);ctx.fill();
 
  requestAnimationFrame(loop);
-}
-
-function draw(p,c){
- ctx.fillStyle=c;ctx.beginPath();ctx.arc(p.x,p.y,p.r,0,Math.PI*2);ctx.fill();
 }
 </script>
 
