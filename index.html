@@ -2,7 +2,7 @@
 <html lang="pt-br">
 <head>
 <meta charset="UTF-8">
-<title>Futebol 2D</title>
+<title>Futebol 2D com Colisão</title>
 
 <link href="https://fonts.googleapis.com/css2?family=Rubik+Wet+Paint&display=swap" rel="stylesheet">
 
@@ -64,6 +64,7 @@ canvas{display:block;margin:auto;background:#1e7a1e}
 <canvas id="game" width="900" height="500"></canvas>
 
 <script>
+/* ================= CONFIG ================= */
 const canvas=document.getElementById("game");
 const ctx=canvas.getContext("2d");
 
@@ -81,16 +82,15 @@ let keys={};
 
 const goalSound=new Audio("https://assets.mixkit.co/sfx/preview/mixkit-crowd-cheer-2014.mp3");
 
-// jogadores
-let p1={x:200,y:250,r:15};
-let p2={x:700,y:250,r:15};
+/* ================= ENTIDADES ================= */
+let p1={x:200,y:250,r:16};
+let p2={x:700,y:250,r:16};
 let gk1={x:450,y:470,r:18};
 let gk2={x:450,y:30,r:18};
 
-// bola
 let ball={x:450,y:250,r:8,vx:0,vy:0};
 
-// menus cores
+/* ================= MENUS ================= */
 COLORS.forEach(o=>{
  let b1=document.createElement("button");
  b1.style.background=o.c; b1.innerText=o.n;
@@ -116,9 +116,11 @@ function start(){
 }
 
 function resume(){
- paused=false;pause.style.display="none";
+ paused=false;
+ pause.style.display="none";
 }
 
+/* ================= RESET ================= */
 function resetPositions(){
  ball.x=450;ball.y=250;ball.vx=ball.vy=0;
  if(half===1){
@@ -131,47 +133,87 @@ function resetPositions(){
 }
 
 function resetMatch(){
- score1=score2=0;time=60;half=1;
- resetPositions();resume();
+ score1=score2=0;
+ time=60;half=1;
+ resetPositions();
+ resume();
 }
 
+/* ================= TEMPO ================= */
 function clock(){
  if(!paused && playing){
   if(time>0)time--;
-  else if(half===1){half=2;time=60;resetPositions()}
+  else if(half===1){
+   half=2;
+   time=60;
+   resetPositions();
+  }
   document.getElementById("time").innerText=time;
  }
 }
 
+/* ================= INPUT ================= */
 addEventListener("keydown",e=>{
  keys[e.key]=true;
- if(e.key==="Escape"){paused=!paused;pause.style.display=paused?"flex":"none"}
+ if(e.key==="Escape"){
+  paused=!paused;
+  pause.style.display=paused?"flex":"none";
+ }
 });
 addEventListener("keyup",e=>keys[e.key]=false);
 
-function dist(a,b){return Math.hypot(a.x-b.x,a.y-b.y)}
+/* ================= FÍSICA ================= */
+function dist(a,b){
+ return Math.hypot(a.x-b.x,a.y-b.y);
+}
 
+function collideCircles(a,b,push){
+ let dx=b.x-a.x;
+ let dy=b.y-a.y;
+ let d=Math.hypot(dx,dy);
+ let min=a.r+b.r;
+ if(d<min){
+  let nx=dx/d;
+  let ny=dy/d;
+  let overlap=min-d;
+  a.x-=nx*overlap*push;
+  a.y-=ny*overlap*push;
+  b.x+=nx*overlap*(1-push);
+  b.y+=ny*overlap*(1-push);
+  return {nx,ny};
+ }
+ return null;
+}
+
+/* ================= LOOP ================= */
 function loop(){
  if(!playing){requestAnimationFrame(loop);return}
- if(!paused){
-  // movimento
-  if(keys["w"])p1.y-=2;
-  if(keys["s"])p1.y+=2;
-  if(keys["a"])p1.x-=2;
-  if(keys["d"])p1.x+=2;
 
-  if(keys["ArrowUp"])p2.y-=2;
-  if(keys["ArrowDown"])p2.y+=2;
-  if(keys["ArrowLeft"])p2.x-=2;
-  if(keys["ArrowRight"])p2.x+=2;
+ if(!paused){
+  let speed=2;
+
+  // movimento
+  if(keys["w"])p1.y-=speed;
+  if(keys["s"])p1.y+=speed;
+  if(keys["a"])p1.x-=speed;
+  if(keys["d"])p1.x+=speed;
+
+  if(keys["ArrowUp"])p2.y-=speed;
+  if(keys["ArrowDown"])p2.y+=speed;
+  if(keys["ArrowLeft"])p2.x-=speed;
+  if(keys["ArrowRight"])p2.x+=speed;
+
+  // colisão jogador x jogador
+  collideCircles(p1,p2,0.5);
 
   // chute p1
-  if(keys["q"] && dist(p1,ball)<25){
+  if(keys["q"] && dist(p1,ball)<26){
    force1=Math.min(force1+0.02,1);
    p1f.style.height=(force1*100)+"%";
   }
   if(!keys["q"] && force1>0){
-   let dx=ball.x-p1.x,dy=ball.y-p1.y;
+   let dx=ball.x-p1.x;
+   let dy=ball.y-p1.y;
    let m=Math.hypot(dx,dy);
    ball.vx+=dx/m*force1*6;
    ball.vy+=dy/m*force1*6;
@@ -179,12 +221,13 @@ function loop(){
   }
 
   // chute p2
-  if(keys[" "] && dist(p2,ball)<25){
+  if(keys[" "] && dist(p2,ball)<26){
    force2=Math.min(force2+0.02,1);
    p2f.style.height=(force2*100)+"%";
   }
   if(!keys[" "] && force2>0){
-   let dx=ball.x-p2.x,dy=ball.y-p2.y;
+   let dx=ball.x-p2.x;
+   let dy=ball.y-p2.y;
    let m=Math.hypot(dx,dy);
    ball.vx+=dx/m*force2*6;
    ball.vy+=dy/m*force2*6;
@@ -192,26 +235,44 @@ function loop(){
   }
 
   // bola
-  ball.x+=ball.vx;ball.y+=ball.vy;
-  ball.vx*=0.98;ball.vy*=0.98;
+  ball.x+=ball.vx;
+  ball.y+=ball.vy;
+  ball.vx*=0.98;
+  ball.vy*=0.98;
 
-  // paredes
-  if(ball.x<10||ball.x>890)ball.vx*=-1;
-  if(ball.y<10||ball.y>490)ball.vy*=-1;
+  // colisão bola x jogadores
+  let c1=collideCircles(ball,p1,0.2);
+  if(c1){
+   ball.vx+=c1.nx*2;
+   ball.vy+=c1.ny*2;
+  }
+  let c2=collideCircles(ball,p2,0.2);
+  if(c2){
+   ball.vx+=c2.nx*2;
+   ball.vy+=c2.ny*2;
+  }
 
   // goleiros
   gk1.x+=(ball.x-gk1.x)*0.05;
   gk2.x+=(ball.x-gk2.x)*0.05;
 
+  collideCircles(ball,gk1,0.3);
+  collideCircles(ball,gk2,0.3);
+
+  // paredes
+  if(ball.x<60||ball.x>840)ball.vx*=-1;
+  if(ball.y<40||ball.y>460)ball.vy*=-1;
+
   // gols
   if(ball.y<20 && ball.x>400 && ball.x<500){
-   score1++;goalSound.play();resetPositions()
+   score1++;goalSound.play();resetPositions();
   }
   if(ball.y>480 && ball.x>400 && ball.x<500){
-   score2++;goalSound.play();resetPositions()
+   score2++;goalSound.play();resetPositions();
   }
 
-  document.getElementById("ui").innerText=`${score1} x ${score2} | ⏱️ ${time}`;
+  document.getElementById("ui").innerText=
+   `${score1} x ${score2} | ⏱️ ${time}`;
  }
 
  // desenho
@@ -240,10 +301,11 @@ function loop(){
  requestAnimationFrame(loop);
 }
 
+/* ================= DRAW ================= */
 function drawPlayer(p,c){
  ctx.fillStyle=c;
  ctx.beginPath();
- ctx.arc(p.x,p.y,15,0,Math.PI*2);
+ ctx.arc(p.x,p.y,p.r,0,Math.PI*2);
  ctx.fill();
 }
 </script>
