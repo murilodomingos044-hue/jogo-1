@@ -2,7 +2,7 @@
 <html lang="pt-br">
 <head>
 <meta charset="UTF-8">
-<title>Futebol 2D com Colisão</title>
+<title>Futebol 2D Lateral</title>
 
 <link href="https://fonts.googleapis.com/css2?family=Rubik+Wet+Paint&display=swap" rel="stylesheet">
 
@@ -64,7 +64,6 @@ canvas{display:block;margin:auto;background:#1e7a1e}
 <canvas id="game" width="900" height="500"></canvas>
 
 <script>
-/* ================= CONFIG ================= */
 const canvas=document.getElementById("game");
 const ctx=canvas.getContext("2d");
 
@@ -82,15 +81,10 @@ let keys={};
 
 const goalSound=new Audio("https://assets.mixkit.co/sfx/preview/mixkit-crowd-cheer-2014.mp3");
 
-/* ================= ENTIDADES ================= */
-let p1={x:200,y:250,r:16};
-let p2={x:700,y:250,r:16};
-let gk1={x:450,y:470,r:18};
-let gk2={x:450,y:30,r:18};
-
+let p1={x:250,y:250,r:16};
+let p2={x:650,y:250,r:16};
 let ball={x:450,y:250,r:8,vx:0,vy:0};
 
-/* ================= MENUS ================= */
 COLORS.forEach(o=>{
  let b1=document.createElement("button");
  b1.style.background=o.c; b1.innerText=o.n;
@@ -120,15 +114,14 @@ function resume(){
  pause.style.display="none";
 }
 
-/* ================= RESET ================= */
 function resetPositions(){
  ball.x=450;ball.y=250;ball.vx=ball.vy=0;
  if(half===1){
-  p1.x=450;p1.y=220;
-  p2.x=450;p2.y=320;
+  p1.x=420;p1.y=250;
+  p2.x=480;p2.y=250;
  }else{
-  p1.x=450;p1.y=320;
-  p2.x=450;p2.y=220;
+  p1.x=480;p1.y=250;
+  p2.x=420;p2.y=250;
  }
 }
 
@@ -139,20 +132,16 @@ function resetMatch(){
  resume();
 }
 
-/* ================= TEMPO ================= */
 function clock(){
  if(!paused && playing){
   if(time>0)time--;
   else if(half===1){
-   half=2;
-   time=60;
-   resetPositions();
+   half=2;time=60;resetPositions();
   }
   document.getElementById("time").innerText=time;
  }
 }
 
-/* ================= INPUT ================= */
 addEventListener("keydown",e=>{
  keys[e.key]=true;
  if(e.key==="Escape"){
@@ -162,151 +151,96 @@ addEventListener("keydown",e=>{
 });
 addEventListener("keyup",e=>keys[e.key]=false);
 
-/* ================= FÍSICA ================= */
-function dist(a,b){
- return Math.hypot(a.x-b.x,a.y-b.y);
-}
-
-function collideCircles(a,b,push){
- let dx=b.x-a.x;
- let dy=b.y-a.y;
- let d=Math.hypot(dx,dy);
- let min=a.r+b.r;
- if(d<min){
-  let nx=dx/d;
-  let ny=dy/d;
-  let overlap=min-d;
-  a.x-=nx*overlap*push;
-  a.y-=ny*overlap*push;
-  b.x+=nx*overlap*(1-push);
-  b.y+=ny*overlap*(1-push);
+function collide(a,b,push){
+ let dx=b.x-a.x,dy=b.y-a.y;
+ let d=Math.hypot(dx,dy),m=a.r+b.r;
+ if(d<m){
+  let nx=dx/d,ny=dy/d,o=m-d;
+  a.x-=nx*o*push;a.y-=ny*o*push;
+  b.x+=nx*o*(1-push);b.y+=ny*o*(1-push);
   return {nx,ny};
  }
- return null;
 }
 
-/* ================= LOOP ================= */
 function loop(){
  if(!playing){requestAnimationFrame(loop);return}
 
  if(!paused){
-  let speed=2;
+  let s=2;
 
-  // movimento
-  if(keys["w"])p1.y-=speed;
-  if(keys["s"])p1.y+=speed;
-  if(keys["a"])p1.x-=speed;
-  if(keys["d"])p1.x+=speed;
+  if(keys["w"])p1.y-=s;
+  if(keys["s"])p1.y+=s;
+  if(keys["a"])p1.x-=s;
+  if(keys["d"])p1.x+=s;
 
-  if(keys["ArrowUp"])p2.y-=speed;
-  if(keys["ArrowDown"])p2.y+=speed;
-  if(keys["ArrowLeft"])p2.x-=speed;
-  if(keys["ArrowRight"])p2.x+=speed;
+  if(keys["ArrowUp"])p2.y-=s;
+  if(keys["ArrowDown"])p2.y+=s;
+  if(keys["ArrowLeft"])p2.x-=s;
+  if(keys["ArrowRight"])p2.x+=s;
 
-  // colisão jogador x jogador
-  collideCircles(p1,p2,0.5);
+  collide(p1,p2,0.5);
 
-  // chute p1
-  if(keys["q"] && dist(p1,ball)<26){
+  if(keys["q"] && Math.hypot(ball.x-p1.x,ball.y-p1.y)<26){
    force1=Math.min(force1+0.02,1);
    p1f.style.height=(force1*100)+"%";
   }
-  if(!keys["q"] && force1>0){
-   let dx=ball.x-p1.x;
-   let dy=ball.y-p1.y;
-   let m=Math.hypot(dx,dy);
+  if(!keys["q"] && force1){
+   let dx=ball.x-p1.x,dy=ball.y-p1.y,m=Math.hypot(dx,dy);
    ball.vx+=dx/m*force1*6;
    ball.vy+=dy/m*force1*6;
    force1=0;p1f.style.height="0%";
   }
 
-  // chute p2
-  if(keys[" "] && dist(p2,ball)<26){
+  if(keys[" "] && Math.hypot(ball.x-p2.x,ball.y-p2.y)<26){
    force2=Math.min(force2+0.02,1);
    p2f.style.height=(force2*100)+"%";
   }
-  if(!keys[" "] && force2>0){
-   let dx=ball.x-p2.x;
-   let dy=ball.y-p2.y;
-   let m=Math.hypot(dx,dy);
+  if(!keys[" "] && force2){
+   let dx=ball.x-p2.x,dy=ball.y-p2.y,m=Math.hypot(dx,dy);
    ball.vx+=dx/m*force2*6;
    ball.vy+=dy/m*force2*6;
    force2=0;p2f.style.height="0%";
   }
 
-  // bola
-  ball.x+=ball.vx;
-  ball.y+=ball.vy;
-  ball.vx*=0.98;
-  ball.vy*=0.98;
+  ball.x+=ball.vx;ball.y+=ball.vy;
+  ball.vx*=0.98;ball.vy*=0.98;
 
-  // colisão bola x jogadores
-  let c1=collideCircles(ball,p1,0.2);
-  if(c1){
-   ball.vx+=c1.nx*2;
-   ball.vy+=c1.ny*2;
-  }
-  let c2=collideCircles(ball,p2,0.2);
-  if(c2){
-   ball.vx+=c2.nx*2;
-   ball.vy+=c2.ny*2;
-  }
+  let c=collide(ball,p1,0.2); if(c){ball.vx+=c.nx*2;ball.vy+=c.ny*2}
+  c=collide(ball,p2,0.2); if(c){ball.vx+=c.nx*2;ball.vy+=c.ny*2}
 
-  // goleiros
-  gk1.x+=(ball.x-gk1.x)*0.05;
-  gk2.x+=(ball.x-gk2.x)*0.05;
-
-  collideCircles(ball,gk1,0.3);
-  collideCircles(ball,gk2,0.3);
-
-  // paredes
-  if(ball.x<60||ball.x>840)ball.vx*=-1;
   if(ball.y<40||ball.y>460)ball.vy*=-1;
 
-  // gols
-  if(ball.y<20 && ball.x>400 && ball.x<500){
-   score1++;goalSound.play();resetPositions();
-  }
-  if(ball.y>480 && ball.x>400 && ball.x<500){
+  // GOL LATERAL
+  if(ball.x<50 && ball.y>200 && ball.y<300){
    score2++;goalSound.play();resetPositions();
   }
+  if(ball.x>850 && ball.y>200 && ball.y<300){
+   score1++;goalSound.play();resetPositions();
+  }
 
-  document.getElementById("ui").innerText=
-   `${score1} x ${score2} | ⏱️ ${time}`;
+  document.getElementById("ui").innerText=`${score1} x ${score2} | ⏱️ ${time}`;
  }
 
- // desenho
  ctx.clearRect(0,0,900,500);
 
- // campo
  ctx.strokeStyle="#fff";
  ctx.strokeRect(50,20,800,460);
 
- // gols
- ctx.strokeRect(400,0,100,20);
- ctx.strokeRect(400,480,100,20);
+ // traves
+ ctx.strokeRect(30,200,20,100);
+ ctx.strokeRect(850,200,20,100);
 
- // jogadores
- drawPlayer(p1,cor1);
- drawPlayer(p2,cor2);
- drawPlayer(gk1,"#ff0");
- drawPlayer(gk2,"#ff0");
+ draw(p1,cor1); draw(p2,cor2);
 
- // bola
  ctx.fillStyle="#fff";
- ctx.beginPath();
- ctx.arc(ball.x,ball.y,ball.r,0,Math.PI*2);
- ctx.fill();
+ ctx.beginPath();ctx.arc(ball.x,ball.y,ball.r,0,Math.PI*2);ctx.fill();
 
  requestAnimationFrame(loop);
 }
 
-/* ================= DRAW ================= */
-function drawPlayer(p,c){
+function draw(p,c){
  ctx.fillStyle=c;
- ctx.beginPath();
- ctx.arc(p.x,p.y,p.r,0,Math.PI*2);
- ctx.fill();
+ ctx.beginPath();ctx.arc(p.x,p.y,p.r,0,Math.PI*2);ctx.fill();
 }
 </script>
 
